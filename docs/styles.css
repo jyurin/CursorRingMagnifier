@@ -1,11 +1,11 @@
 :root {
-  --bg: #f5f9ff;
-  --ink: #172236;
-  --muted: #4f627e;
-  --line: #c8d9ed;
-  --card: #ffffffd6;
-  --brand-a: #0fa072;
-  --brand-b: #1e71eb;
+  --bg: #fff8fb;
+  --ink: #2a2438;
+  --muted: #645d73;
+  --line: #eedcf0;
+  --card: #ffffffd9;
+  --brand-a: #ff7ea8;
+  --brand-b: #7d8bff;
 }
 
 * { box-sizing: border-box; }
@@ -14,11 +14,11 @@ html, body { margin: 0; padding: 0; }
 
 body {
   min-height: 100vh;
-  font-family: "M PLUS 2", sans-serif;
+  font-family: "Zen Maru Gothic", sans-serif;
   color: var(--ink);
   background:
-    radial-gradient(920px 460px at -10% -10%, #dbf8ea 0%, transparent 55%),
-    radial-gradient(840px 430px at 110% 110%, #dbe8ff 0%, transparent 50%),
+    radial-gradient(920px 460px at -10% -10%, #ffe5ef 0%, transparent 55%),
+    radial-gradient(840px 430px at 110% 110%, #e6e8ff 0%, transparent 50%),
     var(--bg);
 }
 
@@ -32,8 +32,8 @@ body {
   opacity: 0.28;
 }
 
-.glow-a { top: -90px; right: -70px; background: #17a57b; }
-.glow-b { left: -60px; bottom: -90px; background: #2f7cec; }
+.glow-a { top: -90px; right: -70px; background: #ff89b3; }
+.glow-b { left: -60px; bottom: -90px; background: #8b96ff; }
 
 .header {
   max-width: 1140px;
@@ -98,7 +98,7 @@ body {
 
 .hero h1 {
   margin: 14px 0 0;
-  font-family: "Shippori Mincho", serif;
+  font-family: "M PLUS Rounded 1c", sans-serif;
   font-size: clamp(38px, 6vw, 68px);
   line-height: 1.14;
 }
@@ -166,7 +166,7 @@ body {
 
 .panel h2 {
   margin: 0;
-  font-family: "Shippori Mincho", serif;
+  font-family: "M PLUS Rounded 1c", sans-serif;
   font-size: clamp(30px, 4vw, 40px);
 }
 
@@ -211,7 +211,23 @@ body {
 .feature-list {
   margin-top: 14px;
   display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.feature-card {
+  display: flex;
+  flex-direction: column;
   gap: 10px;
+}
+
+.feature-shot {
+  width: 100%;
+  height: 170px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid #ebd7ed;
+  background: #fff;
 }
 
 .video-wrap {
@@ -356,6 +372,8 @@ body {
   .lead { font-size: 16px; }
   .benefit-grid,
   .shots-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  .feature-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 760px) {
@@ -365,7 +383,8 @@ body {
   }
 
   .benefit-grid,
-  .shots-grid { grid-template-columns: 1fr; }
+  .shots-grid,
+  .feature-list { grid-template-columns: 1fr; }
 
   .hero,
   .panel {
