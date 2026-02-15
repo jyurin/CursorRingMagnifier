@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cursor Ring & Magnifier | マウス操作を見せるmacOSアプリ</title>
+    <meta name="description" content="画面共有・講義・デモで、カーソル位置とクリック操作をわかりやすく伝える macOS メニューバー常駐アプリ。" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+1p:wght@400;500;700;800&family=Zen+Kaku+Gothic+New:wght@400;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="bg-shape bg-shape-a"></div>
+    <div class="bg-shape bg-shape-b"></div>
+
+    <header class="site-header">
+      <a class="brand" href="#top">
+        <img src="./assets/app-icon.png" alt="Cursor Ring & Magnifier" />
+        <span>Cursor Ring & Magnifier</span>
+      </a>
+      <nav>
+        <a href="#features">機能</a>
+        <a href="#scenes">利用シーン</a>
+        <a href="#download">ダウンロード</a>
+      </nav>
+    </header>
+
+    <main id="top" class="container">
+      <section class="hero">
+        <p class="eyebrow">macOS Menu Bar App</p>
+        <h1>マウス操作を、<br />見ている人に伝わる形へ。</h1>
+        <p class="lead">
+          Cursor Ring & Magnifier は、画面共有・収録・講義のために作られた
+          カーソル強調アプリです。リング表示、クリック演出、拡大鏡で
+          「どこを押したか」を直感的に伝えます。
+        </p>
+        <div class="cta-row">
+          <a class="btn btn-primary" href="https://github.com/jyurin/CursorRingMagnifier/releases" target="_blank" rel="noreferrer">最新版をダウンロード</a>
+          <a class="btn btn-ghost" href="https://github.com/jyurin/CursorRingMagnifier" target="_blank" rel="noreferrer">GitHubを見る</a>
+        </div>
+      </section>
+
+      <section id="features" class="panel">
+        <h2>主な機能</h2>
+        <div class="grid">
+          <article>
+            <h3>カーソルリング</h3>
+            <p>色・サイズ・太さ・透明度・内側塗りつぶしを柔軟に設定。</p>
+          </article>
+          <article>
+            <h3>クリック可視化</h3>
+            <p>1本指/2本指クリックを色で区別し、押下中に演出を保持。</p>
+          </article>
+          <article>
+            <h3>拡大鏡</h3>
+            <p>ホールド式ショートカットで瞬時に拡大。サイズと形状も選択可能。</p>
+          </article>
+          <article>
+            <h3>メニューバー常駐</h3>
+            <p>軽量で常時利用しやすい。設定は自動保存、次回起動で復元。</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="scenes" class="panel panel-alt">
+        <h2>利用シーン</h2>
+        <ul class="scene-list">
+          <li>Zoom / Meet での画面共有</li>
+          <li>操作解説動画の収録（OBSなど）</li>
+          <li>社内デモ・講義・プレゼン</li>
+          <li>視認性支援が必要な操作説明</li>
+        </ul>
+      </section>
+
+      <section id="download" class="panel download">
+        <h2>ダウンロード</h2>
+        <p>GitHub Releases から最新版の <code>.zip</code> を取得できます。</p>
+        <a class="btn btn-primary" href="https://github.com/jyurin/CursorRingMagnifier/releases" target="_blank" rel="noreferrer">Releasesページへ</a>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>© 2026 ミリョク・ラボ / Yoshimoto Jyurin</p>
+    </footer>
+  </body>
+</html>
