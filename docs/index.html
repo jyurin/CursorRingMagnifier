@@ -3,16 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Cursor Ring & Magnifier | 講師のためのカーソル可視化ツール</title>
-    <meta name="description" content="オンライン講座・対面プレゼンの説明力を上げる、講師発のmacOSカーソル強調アプリ。" />
+    <title>Cursor Ring & Magnifier | 講師の説明力を上げるmacOSアプリ</title>
+    <meta name="description" content="講師のために作られた、カーソル強調と拡大鏡のmacOSアプリ。受講者への伝わり方を大きく改善します。" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@600;700&family=M+PLUS+2:wght@400;500;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <div class="ambient ambient-a"></div>
-    <div class="ambient ambient-b"></div>
+    <div class="glow glow-a"></div>
+    <div class="glow glow-b"></div>
 
     <header class="header">
       <a class="brand" href="#top">
@@ -20,59 +20,78 @@
         <span>Cursor Ring & Magnifier</span>
       </a>
       <nav>
-        <a href="#story">ストーリー</a>
-        <a href="#demo">デモ</a>
-        <a href="#shots">画面</a>
+        <a href="#benefits">ベネフィット</a>
+        <a href="#features">機能</a>
+        <a href="#gallery">画面</a>
         <a href="#download">入手</a>
       </nav>
     </header>
 
     <main id="top" class="container">
       <section class="hero reveal">
-        <p class="eyebrow">講師業から生まれた、実戦用macOSアプリ</p>
-        <h1>伝わる解説は、<br />カーソルから始まる。</h1>
+        <p class="eyebrow">講師自身が、本気で実運用するために開発</p>
+        <h1>受講者の「わからない」を、<br />カーソルで減らす。</h1>
         <p class="lead">
           オンライン講座でも、対面講座でも、
-          「どこを見ればいいか」が一瞬で伝わる。
-          Cursor Ring & Magnifier は、講師本人が現場で使うために作った
-          カーソル可視化ツールです。
+          「どこを見ればいいか」が伝わるだけで理解度は大きく変わります。
+          このアプリは、講師である制作者が現場で使うために作った
+          実戦型カーソル可視化ツールです。
         </p>
-        <div class="hero-points">
-          <span>リング強調</span>
-          <span>クリック可視化</span>
-          <span>拡大鏡</span>
-          <span>日本語設定UI</span>
+        <div class="chip-row">
+          <span>説明の迷子を減らす</span>
+          <span>視線誘導がしやすい</span>
+          <span>設定は日本語で直感的</span>
+          <span>講義のテンポを崩さない</span>
         </div>
         <div class="cta-row">
-          <a class="btn btn-primary" href="https://github.com/jyurin/CursorRingMagnifier/releases" target="_blank" rel="noreferrer">最新版をダウンロード</a>
-          <a class="btn btn-secondary" href="https://github.com/jyurin/CursorRingMagnifier" target="_blank" rel="noreferrer">GitHubを見る</a>
+          <a class="btn btn-primary" href="https://github.com/jyurin/CursorRingMagnifier/releases" target="_blank" rel="noreferrer">今すぐダウンロード</a>
+          <a class="btn btn-secondary" href="#demo">デモを見る</a>
         </div>
       </section>
 
-      <section id="story" class="panel reveal">
-        <div class="story-grid">
+      <section id="benefits" class="panel reveal">
+        <h2>このアプリを使うと、講義がどう変わるか</h2>
+        <div class="benefit-grid">
           <article>
-            <h2>なぜ作ったのか</h2>
-            <p>
-              制作者自身が講師業をしている中で、
-              「マウスカーソルの位置が受講者に伝わらない」という課題を
-              何度も感じたことが開発のきっかけです。
-            </p>
+            <h3>伝わる速度が上がる</h3>
+            <p>受講者がカーソルを見失わないので、操作説明の理解が速くなります。</p>
           </article>
           <article>
-            <h2>目指したもの</h2>
-            <p>
-              派手さよりも、説明のしやすさ。
-              講義中に迷わない設定画面、必要な機能へすぐ届く操作性、
-              実運用で気持ちよく使えることを重視しています。
-            </p>
+            <h3>「今どこ？」が消える</h3>
+            <p>リング強調とクリック可視化で、押した場所が一目で伝わります。</p>
+          </article>
+          <article>
+            <h3>ズーム説明が強い</h3>
+            <p>円形だけでなく横長の拡大鏡を使えるため、見せたい部分を的確に拡大できます。</p>
+          </article>
+          <article>
+            <h3>自分好みに追い込める</h3>
+            <p>サイズ・枠線太さ・透明度・内側透明度まで細かく調整でき、最適な見せ方を作れます。</p>
           </article>
         </div>
       </section>
 
-      <section id="demo" class="panel panel-strong reveal">
-        <h2>アプリ操作デモ</h2>
-        <p class="section-lead">実際の動きが一番早いです。リング・クリック・拡大鏡の流れを動画で確認できます。</p>
+      <section id="features" class="panel panel-strong reveal">
+        <h2>こだわり機能</h2>
+        <div class="feature-list">
+          <article>
+            <h3>1. カーソルカスタマイズの自由度</h3>
+            <p>サイズはスライダーで細かく調整可能。枠線の透明度、内側の透明度も好みに合わせて調整できます。</p>
+          </article>
+          <article>
+            <h3>2. 講師向けに設計した拡大鏡</h3>
+            <p>一般的な円形に加えて、横長長方形の拡大鏡を搭載。説明したい範囲を見せやすくしました。</p>
+          </article>
+          <article>
+            <h3>3. 日本語設定で迷わない</h3>
+            <p>設定画面は日本語。講義前の準備を短時間で済ませ、すぐ本番に入れます。</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="demo" class="panel reveal">
+        <h2>操作デモ</h2>
+        <p class="section-lead">実際の動きを見ると、講義での使いやすさがすぐ分かります。</p>
         <div class="video-wrap">
           <video controls preload="metadata" playsinline>
             <source src="./assets/demo.mp4" type="video/mp4" />
@@ -81,69 +100,71 @@
         </div>
       </section>
 
-      <section id="shots" class="panel reveal">
+      <section id="gallery" class="panel reveal">
         <h2>設定画面と操作イメージ</h2>
-        <p class="section-lead">`settei1~3` / `sousa1~4` の画像を配置すると、自動でギャラリー表示されます。</p>
+        <p class="section-lead">画像をクリックすると拡大表示できます。</p>
         <div class="shots-grid">
-          <figure class="shot placeholder" data-label="settei1">
-            <img src="./assets/settei1.png" alt="settei1" loading="lazy" />
+          <figure class="shot" data-label="settei1">
+            <img src="./assets/settei1.png" alt="設定画面スクリーンショット 1" loading="lazy" />
             <figcaption>設定画面スクリーンショット 1</figcaption>
           </figure>
-          <figure class="shot placeholder" data-label="settei2">
-            <img src="./assets/settei2.png" alt="settei2" loading="lazy" />
+          <figure class="shot" data-label="settei2">
+            <img src="./assets/settei2.png" alt="設定画面スクリーンショット 2" loading="lazy" />
             <figcaption>設定画面スクリーンショット 2</figcaption>
           </figure>
-          <figure class="shot placeholder" data-label="settei3">
-            <img src="./assets/settei3.png" alt="settei3" loading="lazy" />
+          <figure class="shot" data-label="settei3">
+            <img src="./assets/settei3.png" alt="設定画面スクリーンショット 3" loading="lazy" />
             <figcaption>設定画面スクリーンショット 3</figcaption>
           </figure>
-          <figure class="shot placeholder" data-label="sousa1">
-            <img src="./assets/sousa1.png" alt="sousa1" loading="lazy" />
+          <figure class="shot" data-label="sousa1">
+            <img src="./assets/sousa1.png" alt="シンプルな操作画面" loading="lazy" />
             <figcaption>シンプルな操作画面</figcaption>
           </figure>
-          <figure class="shot placeholder" data-label="sousa2">
-            <img src="./assets/sousa2.png" alt="sousa2" loading="lazy" />
+          <figure class="shot" data-label="sousa2">
+            <img src="./assets/sousa2.png" alt="カーソルリングのカスタム画面" loading="lazy" />
             <figcaption>カーソルリングのカスタム画面</figcaption>
           </figure>
-          <figure class="shot placeholder" data-label="sousa3">
-            <img src="./assets/sousa3.png" alt="sousa3" loading="lazy" />
+          <figure class="shot" data-label="sousa3">
+            <img src="./assets/sousa3.png" alt="拡大鏡の操作画面" loading="lazy" />
             <figcaption>拡大鏡の操作画面</figcaption>
           </figure>
-          <figure class="shot placeholder" data-label="sousa4">
-            <img src="./assets/sousa4.png" alt="sousa4" loading="lazy" />
+          <figure class="shot" data-label="sousa4">
+            <img src="./assets/sousa4.png" alt="設定が日本語と書いてる画面" loading="lazy" />
             <figcaption>設定が日本語と書いてる画面</figcaption>
           </figure>
         </div>
       </section>
 
+      <section class="panel creator reveal">
+        <h2>開発者メッセージ</h2>
+        <p>
+          私自身が講師として「どうすればもっと分かりやすく伝えられるか」を考え続け、
+          授業・セミナーの実運用を前提に磨き込んだアプリです。
+          ぜひ、あなたの講義スタイルに合わせて使い倒してください。
+        </p>
+      </section>
+
       <section id="download" class="panel download reveal">
-        <h2>今すぐ使う</h2>
+        <h2>ダウンロード</h2>
         <p>
           GitHub Releases から <code>CursorRingMagnifier-macOS.zip</code> をダウンロードして、
           解凍後に <code>/Applications</code> へ移動してください。
         </p>
-        <a class="btn btn-primary" href="https://github.com/jyurin/CursorRingMagnifier/releases" target="_blank" rel="noreferrer">Releasesへ</a>
+        <a class="btn btn-primary" href="https://github.com/jyurin/CursorRingMagnifier/releases" target="_blank" rel="noreferrer">Releasesページへ</a>
       </section>
     </main>
+
+    <div id="lightbox" class="lightbox" aria-hidden="true">
+      <button class="lightbox-close" type="button" aria-label="閉じる">×</button>
+      <img id="lightbox-image" alt="拡大画像" />
+      <p id="lightbox-caption"></p>
+    </div>
 
     <footer class="footer">
       <p>© 2026 ミリョク・ラボ / Yoshimoto Jyurin</p>
     </footer>
 
     <script>
-      const shots = document.querySelectorAll('.shot img');
-      shots.forEach((img) => {
-        img.addEventListener('error', () => {
-          const figure = img.closest('.shot');
-          figure.classList.add('is-missing');
-        });
-        img.addEventListener('load', () => {
-          const figure = img.closest('.shot');
-          figure.classList.remove('placeholder');
-          figure.classList.remove('is-missing');
-        });
-      });
-
       const revealItems = document.querySelectorAll('.reveal');
       const io = new IntersectionObserver((entries) => {
         entries.forEach((entry) => {
@@ -152,8 +173,46 @@
             io.unobserve(entry.target);
           }
         });
-      }, { threshold: 0.15 });
+      }, { threshold: 0.14 });
       revealItems.forEach((el) => io.observe(el));
+
+      const lightbox = document.getElementById('lightbox');
+      const lightboxImage = document.getElementById('lightbox-image');
+      const lightboxCaption = document.getElementById('lightbox-caption');
+      const closeButton = document.querySelector('.lightbox-close');
+      const shots = document.querySelectorAll('.shot');
+
+      const closeLightbox = () => {
+        lightbox.classList.remove('is-open');
+        lightbox.setAttribute('aria-hidden', 'true');
+        lightboxImage.removeAttribute('src');
+      };
+
+      shots.forEach((shot) => {
+        const img = shot.querySelector('img');
+        const caption = shot.querySelector('figcaption')?.textContent || '';
+
+        img.addEventListener('error', () => {
+          shot.classList.add('is-missing');
+        });
+
+        shot.addEventListener('click', () => {
+          if (shot.classList.contains('is-missing')) return;
+          lightboxImage.src = img.src;
+          lightboxImage.alt = img.alt;
+          lightboxCaption.textContent = caption;
+          lightbox.classList.add('is-open');
+          lightbox.setAttribute('aria-hidden', 'false');
+        });
+      });
+
+      lightbox.addEventListener('click', (event) => {
+        if (event.target === lightbox) closeLightbox();
+      });
+      closeButton.addEventListener('click', closeLightbox);
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') closeLightbox();
+      });
     </script>
   </body>
 </html>
