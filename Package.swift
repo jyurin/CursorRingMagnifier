@@ -16,8 +16,12 @@ let package = Package(
                 .linkedFramework("AppKit"),
                 .linkedFramework("SwiftUI"),
                 .linkedFramework("CoreGraphics"),
+                .linkedFramework("QuartzCore"),
+                .linkedFramework("ScreenCaptureKit"),
+                .linkedFramework("AVFoundation"),
                 .linkedFramework("ServiceManagement")
             ]
-        )
+        ),
+        .testTarget(name: "MouseCircleAppTests", dependencies: ["MouseCircleApp"])
     ]
 )

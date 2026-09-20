@@ -2,10 +2,12 @@ import Foundation
 import SwiftUI
 
 struct SettingsView: View {
+    @ObservedObject private var model: AppModel
     @ObservedObject private var settingsStore: SettingsStore
     @ObservedObject private var permissions: PermissionsModel
 
     init(model: AppModel) {
+        self._model = ObservedObject(wrappedValue: model)
         self._settingsStore = ObservedObject(wrappedValue: model.settingsStore)
         self._permissions = ObservedObject(wrappedValue: model.permissions)
     }
@@ -34,6 +36,17 @@ struct SettingsView: View {
         }
         .padding(18)
         .frame(width: 760, height: 680)
+        .task {
+            model.captureContextChanged()
+            while !Task.isCancelled {
+                permissions.refresh()
+                do { try await Task.sleep(for: .seconds(2)) } catch { break }
+            }
+        }
+        .onDisappear {
+            settingsStore.flush()
+            model.captureContextChanged()
+        }
     }
 
     private var appearanceTab: some View {
@@ -142,7 +155,20 @@ struct SettingsView: View {
                 Text("未許可の場合は拡大鏡のみ無効になります。")
                     .font(.callout)
                     .foregroundStyle(.secondary)
+                if !permissions.screenRecordingGranted {
+                    Text("「許可を開く」から、システム設定の「プライバシーとセキュリティ > 画面収録」でこのアプリを許可してください。許可後にアプリの再起動が必要な場合があります。")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+                if let message = model.captureError {
+                    Text("拡大鏡を開始できませんでした。\n\(message)")
+                        .font(.callout)
+                        .foregroundStyle(.red)
+                }
             }
+            Text("拡大鏡はキーを押している間だけ画面を取り込みます。画面や音声の保存・送信はしません。")
+                .font(.callout)
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -159,7 +185,7 @@ struct SettingsView: View {
                 )
 
                 sliderRow(
-                    title: "演出時間",
+                    title: "縮小アニメーション",
                     value: binding(\.clickDuration),
                     range: 0.08...0.25,
                     valueText: milliseconds(settingsStore.settings.clickDuration)
@@ -167,6 +193,9 @@ struct SettingsView: View {
 
                 ColorPaletteRow(title: "1本指クリック色", selected: binding(\.normalClickColor))
                 ColorPaletteRow(title: "2本指クリック色", selected: binding(\.secondaryClickColor))
+                Text("押している間は縮小と色の変化を維持し、離すとすぐに元に戻ります。")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
             }
 
             sectionCard(title: "ショートカット") {
@@ -192,6 +221,9 @@ struct SettingsView: View {
 
             sectionCard(title: "起動と権限") {
                 Toggle("ログイン時に自動起動", isOn: binding(\.startAtLogin))
+                if let message = model.loginError {
+                    Text(message).font(.callout).foregroundStyle(.red)
+                }
 
                 permissionRow(
                     title: "アクセシビリティ",
@@ -231,6 +263,9 @@ struct SettingsView: View {
                             .font(.title3.weight(.semibold))
                         Text("画面共有や操作説明のためのカーソル強調ツール")
                             .font(.callout)
+                            .foregroundStyle(.secondary)
+                        Text("バージョン \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "開発版")")
+                            .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                 }

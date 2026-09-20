@@ -6,6 +6,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        NSWindow.allowsAutomaticWindowTabbing = false
     }
 
     @MainActor
@@ -21,6 +22,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let window = NSWindow(contentViewController: hosting)
         window.styleMask = [.titled, .closable, .miniaturizable]
         window.title = "カーソルリング設定"
+        window.isReleasedWhenClosed = false
+        window.acceptsMouseMovedEvents = true
         window.setContentSize(NSSize(width: 760, height: 680))
         window.center()
         window.makeKeyAndOrderFront(nil)

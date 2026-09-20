@@ -8,34 +8,33 @@ struct MouseCircleMenuBarApp: App {
 
     var body: some Scene {
         MenuBarExtra("Cursor Ring", systemImage: "scope") {
-            Toggle("Cursor Highlight", isOn: Binding(
-                get: { model.settingsStore.settings.highlightEnabled },
-                set: { model.settingsStore.settings.highlightEnabled = $0 }
-            ))
-
-            Toggle("Magnifier (hold \(model.settingsStore.settings.magnifierHoldModifier.label))", isOn: .constant(model.magnifierHolding))
-                .disabled(true)
-
-            Divider()
-
-            Toggle("Start at Login", isOn: Binding(
-                get: { model.settingsStore.settings.startAtLogin },
-                set: { model.settingsStore.settings.startAtLogin = $0 }
-            ))
-
-            Button("Settings...") {
-                appDelegate.openSettings(with: model)
-            }
-
-            Divider()
-
-            Button("Quit") {
-                NSApplication.shared.terminate(nil)
-            }
+            MenuContent(model: model, settings: model.settingsStore) { appDelegate.openSettings(with: model) }
         }
 
         Settings {
             SettingsView(model: model)
+        }
+    }
+}
+
+private struct MenuContent: View {
+    @ObservedObject var model: AppModel
+    @ObservedObject var settings: SettingsStore
+    let openSettings: () -> Void
+
+    var body: some View {
+        Toggle("マウスリングを表示", isOn: $settings.settings.highlightEnabled)
+        Text("拡大鏡: \(model.magnifierHolding ? "表示中" : settings.settings.magnifierHoldModifier.label + " を長押し")")
+        if model.captureError != nil {
+            Button("拡大鏡の状態を設定で確認…", action: openSettings)
+        }
+        Divider()
+        Toggle("ログイン時に自動起動", isOn: $settings.settings.startAtLogin)
+        Button("設定…", action: openSettings)
+        Divider()
+        Button("終了") {
+            model.shutdown()
+            NSApplication.shared.terminate(nil)
         }
     }
 }

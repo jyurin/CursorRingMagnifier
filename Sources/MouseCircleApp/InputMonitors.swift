@@ -1,5 +1,4 @@
 import AppKit
-import Foundation
 
 @MainActor
 final class InputMonitors {
@@ -7,83 +6,69 @@ final class InputMonitors {
     var onClickStateChanged: ((Bool, Bool) -> Void)?
     var onModifierFlagsChanged: ((NSEvent.ModifierFlags) -> Void)?
     var onKeyDown: ((UInt16, NSEvent.ModifierFlags) -> Void)?
-
-    private var globalMonitors: [Any] = []
-    private var localMonitors: [Any] = []
-    private var cursorTimer: Timer?
+    private var monitors: [Any] = []
+    private var movementMonitors: [Any] = []
+    private let cursor = FrameCoalescer<CGPoint>(framesPerSecond: 60)
+    private var running = false
+    private var tracking = false
 
     func start() {
-        stop()
+        guard !running else { return }
+        running = true
+        cursor.deliver = { [weak self] in self?.onCursorMoved?($0) }
+        monitors = observe([.leftMouseDown, .leftMouseUp, .rightMouseDown, .rightMouseUp, .keyDown, .flagsChanged]) {
+            [weak self] event in self?.handle(event)
+        }
+    }
 
-        globalMonitors.append(
-            NSEvent.addGlobalMonitorForEvents(
-                matching: [.leftMouseDown, .leftMouseUp, .rightMouseDown, .rightMouseUp]
-            ) { [weak self] event in
-                Task { @MainActor in
-                    self?.handleClick(event)
-                }
-            } as Any
-        )
-
-        globalMonitors.append(
-            NSEvent.addGlobalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { [weak self] event in
-                Task { @MainActor in
-                    self?.handleHotkey(event)
-                }
-            } as Any
-        )
-
-        localMonitors.append(
-            NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { [weak self] event in
-                self?.handleHotkey(event)
-                return event
-            } as Any
-        )
-
-        cursorTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 120.0, repeats: true) { [weak self] _ in
-            guard let self else { return }
-            Task { @MainActor in
-                self.onCursorMoved?(NSEvent.mouseLocation)
+    func setPointerTracking(_ enabled: Bool) {
+        guard enabled != tracking else { return }
+        tracking = enabled
+        movementMonitors.forEach(NSEvent.removeMonitor)
+        movementMonitors.removeAll()
+        cursor.cancel()
+        if enabled && running {
+            movementMonitors = observe([.mouseMoved, .leftMouseDragged, .rightMouseDragged, .otherMouseDragged]) {
+                [weak self] _ in self?.cursor.submit(NSEvent.mouseLocation)
             }
+            onCursorMoved?(NSEvent.mouseLocation)
         }
     }
 
     func stop() {
-        for monitor in globalMonitors {
-            NSEvent.removeMonitor(monitor)
-        }
-        for monitor in localMonitors {
-            NSEvent.removeMonitor(monitor)
-        }
-        globalMonitors.removeAll()
-        localMonitors.removeAll()
-
-        cursorTimer?.invalidate()
-        cursorTimer = nil
+        setPointerTracking(false)
+        monitors.forEach(NSEvent.removeMonitor)
+        monitors.removeAll()
+        running = false
     }
 
-    private func handleHotkey(_ event: NSEvent) {
-        if event.type == .flagsChanged {
-            onModifierFlagsChanged?(event.modifierFlags)
-            return
-        }
-
-        guard event.type == .keyDown else { return }
-        onKeyDown?(event.keyCode, event.modifierFlags)
+    private func observe(_ mask: NSEvent.EventTypeMask, handler: @escaping @MainActor (NSEvent) -> Void) -> [Any] {
+        var tokens: [Any] = []
+        // AppKit documents both event-monitor callbacks as main-thread callbacks.
+        if let token = NSEvent.addGlobalMonitorForEvents(matching: mask, handler: { event in
+            MainActor.assumeIsolated { handler(event) }
+        }) { tokens.append(token) }
+        if let token = NSEvent.addLocalMonitorForEvents(matching: mask, handler: { event in
+            MainActor.assumeIsolated { handler(event) }
+            return event
+        }) { tokens.append(token) }
+        return tokens
     }
 
-    private func handleClick(_ event: NSEvent) {
+    private func handle(_ event: NSEvent) {
         switch event.type {
-        case .leftMouseDown:
-            onClickStateChanged?(true, false)
-        case .leftMouseUp:
-            onClickStateChanged?(false, false)
-        case .rightMouseDown:
-            onClickStateChanged?(true, true)
-        case .rightMouseUp:
-            onClickStateChanged?(false, true)
-        default:
-            break
+        case .flagsChanged:
+            onModifierFlagsChanged?(event.modifierFlags)
+        case .keyDown:
+            if !event.isARepeat { onKeyDown?(event.keyCode, event.modifierFlags) }
+        case .leftMouseDown, .leftMouseUp, .rightMouseDown, .rightMouseUp:
+            if tracking {
+                cursor.cancel()
+                onCursorMoved?(NSEvent.mouseLocation)
+            }
+            onClickStateChanged?(event.type == .leftMouseDown || event.type == .rightMouseDown,
+                                 event.type == .rightMouseDown || event.type == .rightMouseUp)
+        default: break
         }
     }
 }

@@ -214,7 +214,7 @@ enum LetterKeyPreset: String, CaseIterable, Codable, Identifiable {
     }
 }
 
-struct AppSettings: Codable {
+struct AppSettings: Codable, Equatable {
     var highlightEnabled: Bool = true
     var ringSize: RingSizePreset = .large
     var ringCustomSize: Double = 88
@@ -239,6 +239,74 @@ struct AppSettings: Codable {
     var toggleShortcutKey: LetterKeyPreset = .m
     var magnifierHoldModifier: ModifierKeyPreset = .control
     var startAtLogin: Bool = false
+
+    var ringDiameter: CGFloat {
+        switch ringSize {
+        case .small: 44
+        case .medium: 64
+        case .large: 88
+        case .custom: CGFloat(ringCustomSize)
+        }
+    }
+
+    var ringLineWidth: CGFloat {
+        switch borderWeight {
+        case .thin: 2
+        case .regular: 4
+        case .bold: 6
+        case .custom: CGFloat(borderCustomWidth)
+        }
+    }
+
+    var lensSize: CGSize {
+        CGSize(width: magnifierSize.diameter * magnifierShape.widthMultiplier, height: magnifierSize.diameter)
+    }
+
+    init() {}
+
+    // Missing or invalid individual fields must not discard the user's other settings.
+    init(from decoder: Decoder) throws {
+        self.init()
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        func read<T: Decodable>(_ key: CodingKeys, _ fallback: T) -> T {
+            (try? c.decode(T.self, forKey: key)) ?? fallback
+        }
+        highlightEnabled = read(.highlightEnabled, highlightEnabled)
+        ringSize = read(.ringSize, ringSize)
+        ringCustomSize = read(.ringCustomSize, ringCustomSize).clamped(to: 24...220, fallback: 88)
+        borderWeight = read(.borderWeight, borderWeight)
+        borderCustomWidth = read(.borderCustomWidth, borderCustomWidth).clamped(to: 1...20, fallback: 2)
+        ringOpacity = read(.ringOpacity, ringOpacity).clamped(to: 0.1...1, fallback: 0.6)
+        ringColor = read(.ringColor, ringColor).sanitized
+        fillEnabled = read(.fillEnabled, fillEnabled)
+        fillOpacity = read(.fillOpacity, fillOpacity).clamped(to: 0.05...1, fallback: 0.2)
+        fillColor = read(.fillColor, fillColor).sanitized
+        clickFeedbackEnabled = read(.clickFeedbackEnabled, clickFeedbackEnabled)
+        clickShrinkAmount = read(.clickShrinkAmount, clickShrinkAmount).clamped(to: 0.7...0.95, fallback: 0.82)
+        clickDuration = read(.clickDuration, clickDuration).clamped(to: 0.08...0.25, fallback: 0.16)
+        normalClickColor = read(.normalClickColor, normalClickColor).sanitized
+        secondaryClickColor = read(.secondaryClickColor, secondaryClickColor).sanitized
+        magnifierScale = read(.magnifierScale, magnifierScale)
+        magnifierSize = read(.magnifierSize, magnifierSize)
+        magnifierShape = read(.magnifierShape, magnifierShape)
+        toggleShortcutModifier = read(.toggleShortcutModifier, toggleShortcutModifier)
+        toggleShortcutKey = read(.toggleShortcutKey, toggleShortcutKey)
+        magnifierHoldModifier = read(.magnifierHoldModifier, magnifierHoldModifier)
+        startAtLogin = read(.startAtLogin, startAtLogin)
+    }
+}
+
+private extension RGBAColor {
+    var sanitized: Self {
+        .init(red: red.clamped(to: 0...1, fallback: 0), green: green.clamped(to: 0...1, fallback: 0),
+              blue: blue.clamped(to: 0...1, fallback: 0), alpha: alpha.clamped(to: 0...1, fallback: 1))
+    }
+}
+
+private extension Double {
+    func clamped(to range: ClosedRange<Double>, fallback: Double) -> Double {
+        isFinite ? min(range.upperBound, max(range.lowerBound, self)) : fallback
+    }
 }
 
 private extension CGFloat {

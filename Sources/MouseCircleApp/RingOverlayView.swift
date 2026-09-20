@@ -1,37 +1,66 @@
 import AppKit
+import QuartzCore
 
 final class RingOverlayView: NSView {
-    var cursorLocationInWindow: CGPoint = .zero { didSet { needsDisplay = true } }
-    var ringColor: NSColor = .systemBlue { didSet { needsDisplay = true } }
-    var ringOpacity: CGFloat = 1.0 { didSet { needsDisplay = true } }
-    var fillEnabled: Bool = false { didSet { needsDisplay = true } }
-    var fillColor: NSColor = .systemBlue { didSet { needsDisplay = true } }
-    var fillOpacity: CGFloat = 0.2 { didSet { needsDisplay = true } }
-    var ringDiameter: CGFloat = 64 { didSet { needsDisplay = true } }
-    var lineWidth: CGFloat = 4 { didSet { needsDisplay = true } }
-    var scale: CGFloat = 1.0 { didSet { needsDisplay = true } }
+    private struct Appearance: Equatable {
+        let diameter: CGFloat
+        let lineWidth: CGFloat
+        let scale: CGFloat
+        let stroke: RGBAColor
+        let opacity: Double
+        let fill: RGBAColor
+        let fillOpacity: Double
+        let fillEnabled: Bool
+    }
+    private let ring = CAShapeLayer()
+    private var cachedAppearance: Appearance?
+    private(set) var appearanceUpdateCount = 0
 
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        layer = CALayer()
+        wantsLayer = true
+        layer?.addSublayer(ring)
+    }
+
+    required init?(coder: NSCoder) { nil }
     override var isOpaque: Bool { false }
 
-    override func draw(_ dirtyRect: NSRect) {
-        super.draw(dirtyRect)
-
-        let drawDiameter = ringDiameter * max(0.1, scale)
-        let rect = CGRect(
-            x: cursorLocationInWindow.x - drawDiameter / 2,
-            y: cursorLocationInWindow.y - drawDiameter / 2,
-            width: drawDiameter,
-            height: drawDiameter
-        )
-
-        let path = NSBezierPath(ovalIn: rect)
-        if fillEnabled {
-            fillColor.withAlphaComponent(fillOpacity).setFill()
-            path.fill()
+    func update(settings: AppSettings, clicks: ClickState) {
+        let next = Appearance(diameter: settings.ringDiameter, lineWidth: settings.ringLineWidth,
+                              scale: clicks.scale(settings: settings), stroke: clicks.color(settings: settings),
+                              opacity: settings.ringOpacity, fill: settings.fillColor,
+                              fillOpacity: settings.fillOpacity, fillEnabled: settings.fillEnabled)
+        guard next != cachedAppearance else { return }
+        let previous = cachedAppearance
+        let fromPath = ring.presentation()?.path ?? ring.path
+        cachedAppearance = next
+        appearanceUpdateCount += 1
+        let diameter = next.diameter * next.scale
+        let rect = CGRect(x: (bounds.width - diameter) / 2, y: (bounds.height - diameter) / 2,
+                          width: diameter, height: diameter)
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        ring.removeAllAnimations()
+        ring.frame = bounds
+        ring.path = CGPath(ellipseIn: rect, transform: nil)
+        ring.lineWidth = next.lineWidth
+        ring.strokeColor = next.stroke.nsColor.withAlphaComponent(next.opacity).cgColor
+        ring.fillColor = next.fillEnabled ? next.fill.nsColor.withAlphaComponent(next.fillOpacity).cgColor : nil
+        CATransaction.commit()
+        // Press animation holds its final appearance; releasing always restores immediately.
+        if let previous, next.scale < previous.scale, let fromPath {
+            let animation = CABasicAnimation(keyPath: "path")
+            animation.fromValue = fromPath
+            animation.toValue = ring.path
+            animation.duration = settings.clickDuration
+            animation.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            ring.add(animation, forKey: "press")
         }
+    }
 
-        path.lineWidth = lineWidth
-        ringColor.withAlphaComponent(ringOpacity).setStroke()
-        path.stroke()
+    override func viewDidChangeBackingProperties() {
+        super.viewDidChangeBackingProperties()
+        ring.contentsScale = window?.backingScaleFactor ?? 2
     }
 }

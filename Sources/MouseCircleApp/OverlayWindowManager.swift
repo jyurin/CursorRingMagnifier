@@ -1,303 +1,215 @@
 import AppKit
-import Foundation
 
 @MainActor
 final class OverlayWindowManager {
-    private struct RingWindowEntry {
-        let screen: NSScreen
-        let window: NSWindow
-        let view: RingOverlayView
-    }
-
-    private var ringWindows: [RingWindowEntry] = []
-    private var magnifierWindow: NSWindow?
-    private var magnifierView: MagnifierView?
-    private var magnifierTimer: Timer?
-
-    private var cursorLocation: CGPoint = .zero
+    var onCaptureFailure: ((String) -> Void)?
+    private let ringView = RingOverlayView(frame: .zero)
+    private let lensView = MagnifierView(frame: .zero)
+    private let ringWindow: NSPanel
+    private let lensWindow: NSPanel
+    private let backend = ScreenCaptureBackend()
+    private let capture: CaptureCoordinator
+    private let captureUpdates = FrameCoalescer<CaptureRequest>(framesPerSecond: 30)
+    private var settings = AppSettings()
+    private var clicks = ClickState()
+    private var cursor = NSEvent.mouseLocation
+    private var screens: [NSScreen] = []
     private var magnifierActive = false
-    private var ringScale: CGFloat = 1.0
-    private var ringColorOverride: NSColor?
-    private var leftButtonPressed = false
-    private var rightButtonPressed = false
-    private var temporarilyHiddenUntil: Date?
+    private var suppressed = false
+    private var suspended = false
+    private var lensHasFrame = false
+    private var lensDisplay: CGDirectDisplayID?
+    private var contentRevision = 0
+    private(set) var windowMoveCount = 0
 
     init() {
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(rebuildRingWindows),
-            name: NSApplication.didChangeScreenParametersNotification,
-            object: nil
-        )
+        ringWindow = Self.makeWindow(title: "Cursor Ring Overlay", shadow: false)
+        lensWindow = Self.makeWindow(title: "Cursor Magnifier Overlay", shadow: true)
+        capture = CaptureCoordinator(backend: backend)
+        ringWindow.contentView = ringView
+        lensWindow.contentView = lensView
+        captureUpdates.deliver = { [weak self] request in
+            guard let self, self.canMagnify else { return }
+            self.capture.setRequest(request)
+        }
+        backend.onFrame = { [weak self] session, buffer in
+            guard let self, self.canMagnify, self.capture.accepts(session) else { return }
+            if self.lensView.display(buffer), !self.lensHasFrame {
+                self.lensHasFrame = true
+                self.lensWindow.orderFrontRegardless()
+            }
+        }
+        backend.onFailure = { [weak self] session, message in
+            self?.capture.failed(session: session, message: message)
+        }
+        capture.onFailure = { [weak self] message in
+            self?.setMagnifierActive(false)
+            self?.onCaptureFailure?(message)
+        }
+        screens = NSScreen.screens
     }
 
-    deinit {
-        NotificationCenter.default.removeObserver(self)
+    func apply(_ settings: AppSettings) {
+        let changed = self.settings != settings
+        self.settings = settings
+        if !settings.highlightEnabled {
+            clicks = ClickState()
+            setMagnifierActive(false)
+        }
+        if changed { updateAppearance() }
+        refresh()
     }
 
-    @objc
-    func rebuildRingWindows() {
-        ringWindows.forEach { $0.window.orderOut(nil) }
-        ringWindows.removeAll()
+    func moveCursor(to point: CGPoint) {
+        guard point != cursor else { return }
+        cursor = point
+        refresh()
+    }
 
-        for screen in NSScreen.screens {
-            let window = NSWindow(
-                contentRect: screen.frame,
-                styleMask: .borderless,
-                backing: .buffered,
-                defer: false,
-                screen: screen
-            )
-            window.level = .screenSaver
-            window.backgroundColor = .clear
-            window.isOpaque = false
-            window.hasShadow = false
-            window.ignoresMouseEvents = true
-            window.sharingType = .none
-            window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
+    func setClick(pressed: Bool, secondary: Bool) {
+        clicks.set(pressed: pressed, secondary: secondary)
+        if settings.highlightEnabled { ringView.update(settings: settings, clicks: clicks) }
+    }
 
-            let view = RingOverlayView(frame: CGRect(origin: .zero, size: screen.frame.size))
-            view.wantsLayer = true
-            window.contentView = view
-            window.orderFrontRegardless()
+    func resetClicks() {
+        clicks = ClickState()
+        ringView.update(settings: settings, clicks: clicks)
+    }
 
-            ringWindows.append(RingWindowEntry(screen: screen, window: window, view: view))
+    func setMagnifierActive(_ active: Bool) {
+        let active = active && settings.highlightEnabled && !suppressed && !suspended
+        guard active != magnifierActive else { return }
+        magnifierActive = active
+        if !active { stopCapture() }
+        else { updateAppearance() }
+        refresh()
+    }
+
+    func setSuppressed(_ value: Bool) {
+        guard value != suppressed else { return }
+        suppressed = value
+        if value { setMagnifierActive(false) }
+        refresh()
+    }
+
+    func setSuspended(_ value: Bool) {
+        suspended = value
+        if value {
+            setMagnifierActive(false)
+            resetClicks()
+        } else {
+            cursor = NSEvent.mouseLocation
+            screensChanged()
+        }
+        refresh()
+    }
+
+    func screensChanged() {
+        screens = NSScreen.screens
+        captureContextChanged()
+        refresh()
+    }
+
+    func captureContextChanged() {
+        contentRevision += 1
+        if magnifierActive {
+            stopCapture()
+            refresh()
         }
     }
 
-    func updateCursor(location: CGPoint, settings: AppSettings) {
-        cursorLocation = location
-        if ringWindows.isEmpty {
-            rebuildRingWindows()
-        }
+    func shutdown() {
+        suspended = true
+        magnifierActive = false
+        stopCapture()
+        ringWindow.orderOut(nil)
+    }
 
-        for entry in ringWindows {
-            entry.window.setFrame(entry.screen.frame, display: false)
-            entry.view.frame = CGRect(origin: .zero, size: entry.screen.frame.size)
-            entry.view.isHidden = !settings.highlightEnabled || magnifierActive || isTemporarilyHidden
-            entry.view.cursorLocationInWindow = CGPoint(
-                x: location.x - entry.screen.frame.minX,
-                y: location.y - entry.screen.frame.minY
-            )
-            entry.view.ringColor = ringColorOverride ?? settings.ringColor.nsColor
-            entry.view.ringOpacity = CGFloat(settings.ringOpacity)
-            entry.view.fillEnabled = settings.fillEnabled
-            entry.view.fillColor = settings.fillColor.nsColor
-            entry.view.fillOpacity = CGFloat(settings.fillOpacity)
-            entry.view.ringDiameter = ringDiameter(for: settings)
-            entry.view.lineWidth = lineWidth(for: settings)
-            entry.view.scale = ringScale
-        }
+    private var canMagnify: Bool { magnifierActive && settings.highlightEnabled && !suppressed && !suspended }
 
-        if magnifierWindow != nil {
-            updateMagnifierAppearance(settings: settings)
-            updateMagnifierWindowPosition()
+    private func updateAppearance() {
+        setFrame(OverlayGeometry.ringFrame(cursor: cursor, settings: settings), on: ringWindow)
+        ringView.update(settings: settings, clicks: clicks)
+        if magnifierActive {
+            lensWindow.setContentSize(settings.lensSize)
+            lensView.update(shape: settings.magnifierShape)
         }
     }
 
-    func setClickFeedbackPressed(_ isPressed: Bool, isSecondary: Bool, settings: AppSettings) {
-        guard settings.clickFeedbackEnabled else {
-            ringScale = 1.0
-            ringColorOverride = nil
+    private func refresh() {
+        guard settings.highlightEnabled, !suppressed, !suspended else {
+            if ringWindow.isVisible { ringWindow.orderOut(nil) }
             return
         }
-
-        if isSecondary {
-            rightButtonPressed = isPressed
+        if canMagnify {
+            if ringWindow.isVisible { ringWindow.orderOut(nil) }
+            updateLens()
         } else {
-            leftButtonPressed = isPressed
-        }
-
-        let anyPressed = leftButtonPressed || rightButtonPressed
-        if anyPressed {
-            ringScale = CGFloat(settings.clickShrinkAmount)
-            ringColorOverride = rightButtonPressed ? settings.secondaryClickColor.nsColor : settings.normalClickColor.nsColor
-        } else {
-            ringScale = 1.0
-            ringColorOverride = nil
+            setFrame(OverlayGeometry.ringFrame(cursor: cursor, settings: settings), on: ringWindow)
+            ringView.update(settings: settings, clicks: clicks)
+            if !ringWindow.isVisible { ringWindow.orderFrontRegardless() }
         }
     }
 
-    func setMagnifierActive(_ active: Bool, settings: AppSettings) {
-        magnifierActive = active
-        if active {
-            createMagnifierIfNeeded(size: magnifierSize(for: settings))
-            updateMagnifierAppearance(settings: settings)
-            updateMagnifierWindowPosition()
-            startMagnifierUpdates(scale: settings.magnifierScale.scale)
-            magnifierWindow?.orderFrontRegardless()
-        } else {
-            stopMagnifierUpdates()
-            magnifierWindow?.orderOut(nil)
+    private func updateLens() {
+        guard let screen = screens.first(where: { $0.frame.contains(cursor) }) ?? screens.first,
+              let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber else {
+            setMagnifierActive(false)
+            return
         }
-        updateCursor(location: cursorLocation, settings: settings)
+        let displayID = number.uint32Value
+        if lensDisplay != displayID {
+            stopCapture()
+            lensDisplay = displayID
+        }
+        let size = OverlayGeometry.fittedLensSize(settings.lensSize, screen: screen.frame)
+        setFrame(OverlayGeometry.lensFrame(cursor: cursor, size: size, screen: screen.frame), on: lensWindow)
+        let source = OverlayGeometry.sourceRect(cursor: cursor, lensSize: size,
+                                                zoom: settings.magnifierScale.scale, screen: screen.frame)
+        captureUpdates.submit(CaptureRequest(displayID: displayID, sourceRect: source,
+                                             pixelWidth: max(2, Int(ceil(source.width * screen.backingScaleFactor))),
+                                             pixelHeight: max(2, Int(ceil(source.height * screen.backingScaleFactor))),
+                                             excludedWindowIDs: [CGWindowID(ringWindow.windowNumber), CGWindowID(lensWindow.windowNumber)],
+                                             contentRevision: contentRevision))
     }
 
-    func hideRingTemporarily(duration: TimeInterval, settings: AppSettings) {
-        temporarilyHiddenUntil = Date().addingTimeInterval(duration)
-        updateCursor(location: cursorLocation, settings: settings)
+    private func stopCapture() {
+        captureUpdates.cancel()
+        capture.setRequest(nil)
+        lensWindow.orderOut(nil)
+        lensView.clear()
+        lensHasFrame = false
+        lensDisplay = nil
     }
 
-    private func createMagnifierIfNeeded(size: CGSize) {
-        guard magnifierWindow == nil else { return }
+    private func setFrame(_ frame: CGRect, on window: NSWindow) {
+        guard window.frame != frame else { return }
+        if window.frame.size == frame.size { window.setFrameOrigin(frame.origin) }
+        else { window.setFrame(frame, display: false) }
+        windowMoveCount += 1
+    }
 
-        let rect = CGRect(
-            x: cursorLocation.x - size.width / 2,
-            y: cursorLocation.y - size.height / 2,
-            width: size.width,
-            height: size.height
-        )
-        let window = NSWindow(contentRect: rect, styleMask: .borderless, backing: .buffered, defer: false)
+    private static func makeWindow(title: String, shadow: Bool) -> NSPanel {
+        let window = OverlayPanel(contentRect: CGRect(x: 0, y: 0, width: 100, height: 100),
+                                  styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        window.title = title
         window.level = .screenSaver
         window.backgroundColor = .clear
         window.isOpaque = false
-        window.hasShadow = true
+        window.hasShadow = shadow
         window.ignoresMouseEvents = true
-        window.sharingType = .none
+        window.hidesOnDeactivate = false
+        window.isReleasedWhenClosed = false
+        window.isExcludedFromWindowsMenu = true
+        window.sharingType = .readOnly
         window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
-
-        let view = MagnifierView(frame: CGRect(origin: .zero, size: rect.size))
-        window.contentView = view
-
-        magnifierWindow = window
-        magnifierView = view
+        window.setAccessibilityElement(false)
+        return window
     }
+}
 
-    private func updateMagnifierWindowPosition() {
-        guard let magnifierWindow else { return }
-        let size = magnifierWindow.frame.size
-        let offset = max(48.0, size.height * 0.32)
-        let newOrigin = CGPoint(
-            x: cursorLocation.x - size.width / 2,
-            y: cursorLocation.y - size.height / 2 - offset
-        )
-        magnifierWindow.setFrameOrigin(newOrigin)
-    }
-
-    private func updateMagnifierAppearance(settings: AppSettings) {
-        guard let magnifierWindow, let magnifierView else { return }
-        magnifierView.shape = settings.magnifierShape
-
-        let targetSize = magnifierSize(for: settings)
-        let current = magnifierWindow.frame.size
-        if abs(current.width - targetSize.width) < 0.5, abs(current.height - targetSize.height) < 0.5 {
-            return
-        }
-
-        var frame = magnifierWindow.frame
-        frame.origin.x += (current.width - targetSize.width) / 2
-        frame.origin.y += (current.height - targetSize.height) / 2
-        frame.size = targetSize
-        magnifierWindow.setFrame(frame, display: true)
-        magnifierView.frame = CGRect(origin: .zero, size: frame.size)
-    }
-
-    private func startMagnifierUpdates(scale: CGFloat) {
-        stopMagnifierUpdates()
-
-        magnifierTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
-            guard let self else { return }
-            Task { @MainActor in
-                self.captureMagnifierImage(scale: scale)
-            }
-        }
-    }
-
-    private func stopMagnifierUpdates() {
-        magnifierTimer?.invalidate()
-        magnifierTimer = nil
-    }
-
-    private func captureMagnifierImage(scale: CGFloat) {
-        guard let magnifierView else { return }
-        guard let screen = screenContainingCursor() else {
-            magnifierView.image = nil
-            return
-        }
-        guard let displayID = displayID(for: screen) else {
-            magnifierView.image = nil
-            return
-        }
-        guard let displayImage = CGDisplayCreateImage(displayID) else {
-            magnifierView.image = nil
-            return
-        }
-
-        let scaleFactor = screen.backingScaleFactor
-        let sampleHeightPoints: CGFloat = 150 / scale
-        let sampleWidthPoints = sampleHeightPoints * settingsAspectMultiplier()
-        let sampleWidthPixels = sampleWidthPoints * scaleFactor
-        let sampleHeightPixels = sampleHeightPoints * scaleFactor
-
-        let localX = (cursorLocation.x - screen.frame.minX) * scaleFactor
-        let localYFromBottom = (cursorLocation.y - screen.frame.minY) * scaleFactor
-        let imageHeight = CGFloat(displayImage.height)
-        let localYFromTop = imageHeight - localYFromBottom
-
-        var cropRect = CGRect(
-            x: localX - sampleWidthPixels / 2,
-            y: localYFromTop - sampleHeightPixels / 2,
-            width: sampleWidthPixels,
-            height: sampleHeightPixels
-        ).integral
-
-        let imageBounds = CGRect(x: 0, y: 0, width: CGFloat(displayImage.width), height: imageHeight)
-        cropRect = cropRect.intersection(imageBounds)
-        guard !cropRect.isNull, cropRect.width > 1, cropRect.height > 1 else {
-            magnifierView.image = nil
-            return
-        }
-
-        magnifierView.image = displayImage.cropping(to: cropRect)
-    }
-
-    private func screenContainingCursor() -> NSScreen? {
-        for screen in NSScreen.screens where screen.frame.contains(cursorLocation) {
-            return screen
-        }
-        return NSScreen.main
-    }
-
-    private func displayID(for screen: NSScreen) -> CGDirectDisplayID? {
-        let key = NSDeviceDescriptionKey("NSScreenNumber")
-        guard let number = screen.deviceDescription[key] as? NSNumber else {
-            return nil
-        }
-        return CGDirectDisplayID(number.uint32Value)
-    }
-
-    private func magnifierSize(for settings: AppSettings) -> CGSize {
-        let height = settings.magnifierSize.diameter
-        return CGSize(width: height * settings.magnifierShape.widthMultiplier, height: height)
-    }
-
-    private func ringDiameter(for settings: AppSettings) -> CGFloat {
-        switch settings.ringSize {
-        case .small: return 44
-        case .medium: return 64
-        case .large: return 88
-        case .custom: return CGFloat(settings.ringCustomSize)
-        }
-    }
-
-    private func settingsAspectMultiplier() -> CGFloat {
-        guard let magnifierView else { return 1.0 }
-        return magnifierView.shape.widthMultiplier
-    }
-
-    private var isTemporarilyHidden: Bool {
-        guard let until = temporarilyHiddenUntil else { return false }
-        if Date() < until { return true }
-        temporarilyHiddenUntil = nil
-        return false
-    }
-
-    private func lineWidth(for settings: AppSettings) -> CGFloat {
-        switch settings.borderWeight {
-        case .thin: return 2
-        case .regular: return 4
-        case .bold: return 6
-        case .custom: return CGFloat(settings.borderCustomWidth)
-        }
-    }
+private final class OverlayPanel: NSPanel {
+    override var canBecomeKey: Bool { false }
+    override var canBecomeMain: Bool { false }
+    override func constrainFrameRect(_ frameRect: NSRect, to screen: NSScreen?) -> NSRect { frameRect }
 }
